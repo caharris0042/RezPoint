@@ -13,13 +13,16 @@ namespace RezPoint
         public static float ReviveRadius = 3f;
 
         private CharacterMaster deadPlayer;
+        private Vector3 deathPosition;
         private float progress = 0f;
         private bool reviveTriggered = false;
 
         public static void SpawnForPlayer(CharacterMaster master, Vector3 position)
         {
             var go = Object.Instantiate(RezPointPlugin.TotemPrefab, position, Quaternion.identity);
-            go.GetComponent<RezTotem>().deadPlayer = master;
+            var totem = go.GetComponent<RezTotem>();
+            totem.deadPlayer = master;
+            totem.deathPosition = position;
             NetworkServer.Spawn(go);
             Log.Info($"Totem spawned at {position} for {master.playerCharacterMasterController?.networkUser?.userName}");
         }
@@ -57,9 +60,12 @@ namespace RezPoint
         {
             reviveTriggered = true;
             Log.Info($"Reviving {deadPlayer?.playerCharacterMasterController?.networkUser?.userName}");
-            deadPlayer.RespawnExtraLife();
-            // RespawnExtraLife adds ExtraLifeConsumed regardless of whether the player had ExtraLife
-            deadPlayer.inventory.RemoveItem(RoR2Content.Items.ExtraLifeConsumed);
+
+            // Destroy any current body (e.g. a ghost drone) before respawning the main character
+            if (deadPlayer.hasBody)
+                NetworkServer.Destroy(deadPlayer.GetBodyObject());
+
+            deadPlayer.Respawn(deathPosition, Quaternion.identity);
             NetworkServer.Destroy(gameObject);
         }
     }

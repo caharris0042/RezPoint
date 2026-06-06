@@ -65,6 +65,9 @@ namespace RezPoint
             if (!NetworkServer.active) return;
             if (Run.instance == null) return;
 
+            // No point spawning a totem if no one else is alive to use it
+            if (PlayerCharacterMasterController.instances.Count < 2) return;
+
             var master = victimNetworkUser?.masterController?.master;
             if (master == null) return;
 
