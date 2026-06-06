@@ -1,11 +1,14 @@
+using System.Collections.Generic;
 using RoR2;
 using UnityEngine;
 using UnityEngine.Networking;
 
 namespace RezPoint
 {
-    public class RezTotem : MonoBehaviour
+    public class RezTotem : NetworkBehaviour
     {
+        public static readonly List<RezTotem> ActiveTotems = new();
+
         public static float ReviveTime = 10f;
         public static float ReviveRadius = 3f;
 
@@ -15,21 +18,19 @@ namespace RezPoint
 
         public static void SpawnForPlayer(CharacterMaster master, Vector3 position)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            go.transform.position = position;
-            go.transform.localScale = Vector3.one * 1.5f;
-            Object.Destroy(go.GetComponent<Collider>());
-
-            var totem = go.AddComponent<RezTotem>();
-            totem.deadPlayer = master;
-
+            var go = Object.Instantiate(RezPointPlugin.TotemPrefab, position, Quaternion.identity);
+            go.GetComponent<RezTotem>().deadPlayer = master;
+            NetworkServer.Spawn(go);
             Log.Info($"Totem spawned at {position} for {master.playerCharacterMasterController?.networkUser?.userName}");
         }
+
+        private void OnEnable() => ActiveTotems.Add(this);
+        private void OnDisable() => ActiveTotems.Remove(this);
 
         private void Update()
         {
             if (reviveTriggered || !NetworkServer.active) return;
-            if (Run.instance == null) { Destroy(gameObject); return; }
+            if (Run.instance == null) { NetworkServer.Destroy(gameObject); return; }
 
             bool anyInRange = false;
             foreach (var pmc in PlayerCharacterMasterController.instances)
@@ -59,7 +60,7 @@ namespace RezPoint
             deadPlayer.RespawnExtraLife();
             // RespawnExtraLife adds ExtraLifeConsumed regardless of whether the player had ExtraLife
             deadPlayer.inventory.RemoveItem(RoR2Content.Items.ExtraLifeConsumed);
-            Destroy(gameObject);
+            NetworkServer.Destroy(gameObject);
         }
     }
 }
