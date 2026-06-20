@@ -10,12 +10,25 @@ namespace RezPoint
         public static readonly List<RezTotem> ActiveTotems = new();
 
         public static float ReviveTime = 10f;
-        public static float ReviveRadius = 3f;
+        public static float ReviveRadius = 5f;
+
+        private const float MinLightIntensity = 1f;
+        private const float MaxLightIntensity = 8f;
 
         private CharacterMaster deadPlayer;
+        private GameObject originalBodyPrefab;
         private Vector3 deathPosition;
+
+        [SyncVar]
         private float progress = 0f;
         private bool reviveTriggered = false;
+
+        private Light reviveLight;
+
+        protected void Awake()
+        {
+            reviveLight = GetComponent<Light>();
+        }
 
         public static void SpawnForPlayer(CharacterMaster master, Vector3 position)
         {
@@ -23,6 +36,7 @@ namespace RezPoint
             var totem = go.GetComponent<RezTotem>();
             totem.deadPlayer = master;
             totem.deathPosition = position;
+            totem.originalBodyPrefab = master.bodyPrefab;
             NetworkServer.Spawn(go);
             Log.Info($"Totem spawned at {position} for {master.playerCharacterMasterController?.networkUser?.userName}");
         }
@@ -32,6 +46,8 @@ namespace RezPoint
 
         private void Update()
         {
+            UpdateVisuals();
+
             if (reviveTriggered || !NetworkServer.active) return;
             if (Run.instance == null) { NetworkServer.Destroy(gameObject); return; }
 
@@ -56,16 +72,27 @@ namespace RezPoint
             }
         }
 
+        private void UpdateVisuals()
+        {
+            if (reviveLight == null) return;
+            reviveLight.intensity = Mathf.Lerp(MinLightIntensity, MaxLightIntensity, progress);
+            reviveLight.color = Color.Lerp(Color.white, new Color(1f, 0.85f, 0.3f), progress);
+            // TODO: play looping channeling sound keyed to progress
+        }
+
         private void TriggerRevive()
         {
             reviveTriggered = true;
             Log.Info($"Reviving {deadPlayer?.playerCharacterMasterController?.networkUser?.userName}");
 
-            // Destroy any current body (e.g. a ghost drone) before respawning the main character
             if (deadPlayer.hasBody)
                 NetworkServer.Destroy(deadPlayer.GetBodyObject());
 
+            // Restore the body prefab captured at death — drone mode changes this on the master
+            deadPlayer.bodyPrefab = originalBodyPrefab;
             deadPlayer.Respawn(deathPosition, Quaternion.identity);
+            // TODO: play revival completion sound here
+
             NetworkServer.Destroy(gameObject);
         }
     }

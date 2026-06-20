@@ -44,6 +44,12 @@ namespace RezPoint
             sphere.transform.localScale = Vector3.one * 1.5f;
             Object.DestroyImmediate(sphere.GetComponent<Collider>());
 
+            var light = root.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.range = 12f;
+            light.intensity = 1f;
+            light.color = Color.white;
+
             // PrefabAPI assigns a stable assetId and registers the prefab on all clients
             var prefab = PrefabAPI.InstantiateClone(root, "RezTotem", registerNetwork: true);
             Object.Destroy(root);

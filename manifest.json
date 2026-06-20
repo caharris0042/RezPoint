@@ -1,0 +1,10 @@
+{
+    "name": "RezPoint",
+    "version_number": "1.0.0",
+    "website_url": "",
+    "description": "Cooperative resurrection mod — stand near a fallen teammate's totem to bring them back.",
+    "dependencies": [
+        "bbepis-BepInExPack-5.4.2100",
+        "tristanmcpherson-R2API-5.0.6"
+    ]
+}
